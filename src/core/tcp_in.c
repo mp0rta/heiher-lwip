@@ -1953,6 +1953,10 @@ tcp_parseopt(struct tcp_pcb *pcb)
           break;
         case LWIP_TCP_OPT_MSS:
           LWIP_DEBUGF(TCP_INPUT_DEBUG, ("tcp_parseopt: MSS\n"));
+          if (tcp_optidx >= tcphdr_optlen) {
+            /* truncated option: kind byte was the last option byte, no length byte */
+            return;
+          }
           if (tcp_get_next_optbyte() != LWIP_TCP_OPT_LEN_MSS || (tcp_optidx - 2 + LWIP_TCP_OPT_LEN_MSS) > tcphdr_optlen) {
             /* Bad length */
             LWIP_DEBUGF(TCP_INPUT_DEBUG, ("tcp_parseopt: bad length\n"));
@@ -1967,6 +1971,10 @@ tcp_parseopt(struct tcp_pcb *pcb)
 #if LWIP_WND_SCALE
         case LWIP_TCP_OPT_WS:
           LWIP_DEBUGF(TCP_INPUT_DEBUG, ("tcp_parseopt: WND_SCALE\n"));
+          if (tcp_optidx >= tcphdr_optlen) {
+            /* truncated option: kind byte was the last option byte, no length byte */
+            return;
+          }
           if (tcp_get_next_optbyte() != LWIP_TCP_OPT_LEN_WS || (tcp_optidx - 2 + LWIP_TCP_OPT_LEN_WS) > tcphdr_optlen) {
             /* Bad length */
             LWIP_DEBUGF(TCP_INPUT_DEBUG, ("tcp_parseopt: bad length\n"));
@@ -1993,6 +2001,10 @@ tcp_parseopt(struct tcp_pcb *pcb)
 #if LWIP_TCP_TIMESTAMPS
         case LWIP_TCP_OPT_TS:
           LWIP_DEBUGF(TCP_INPUT_DEBUG, ("tcp_parseopt: TS\n"));
+          if (tcp_optidx >= tcphdr_optlen) {
+            /* truncated option: kind byte was the last option byte, no length byte */
+            return;
+          }
           if (tcp_get_next_optbyte() != LWIP_TCP_OPT_LEN_TS || (tcp_optidx - 2 + LWIP_TCP_OPT_LEN_TS) > tcphdr_optlen) {
             /* Bad length */
             LWIP_DEBUGF(TCP_INPUT_DEBUG, ("tcp_parseopt: bad length\n"));
@@ -2018,6 +2030,10 @@ tcp_parseopt(struct tcp_pcb *pcb)
 #if LWIP_TCP_SACK_OUT
         case LWIP_TCP_OPT_SACK_PERM:
           LWIP_DEBUGF(TCP_INPUT_DEBUG, ("tcp_parseopt: SACK_PERM\n"));
+          if (tcp_optidx >= tcphdr_optlen) {
+            /* truncated option: kind byte was the last option byte, no length byte */
+            return;
+          }
           if (tcp_get_next_optbyte() != LWIP_TCP_OPT_LEN_SACK_PERM || (tcp_optidx - 2 + LWIP_TCP_OPT_LEN_SACK_PERM) > tcphdr_optlen) {
             /* Bad length */
             LWIP_DEBUGF(TCP_INPUT_DEBUG, ("tcp_parseopt: bad length\n"));
@@ -2032,6 +2048,10 @@ tcp_parseopt(struct tcp_pcb *pcb)
 #endif /* LWIP_TCP_SACK_OUT */
         default:
           LWIP_DEBUGF(TCP_INPUT_DEBUG, ("tcp_parseopt: other\n"));
+          if (tcp_optidx >= tcphdr_optlen) {
+            /* truncated option: kind byte was the last option byte, no length byte */
+            return;
+          }
           data = tcp_get_next_optbyte();
           if (data < 2) {
             LWIP_DEBUGF(TCP_INPUT_DEBUG, ("tcp_parseopt: bad length\n"));
