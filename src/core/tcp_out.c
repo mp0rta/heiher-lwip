@@ -1634,7 +1634,8 @@ tcp_output_segment(struct tcp_seg *seg, struct tcp_pcb *pcb, struct netif *netif
 err_t
 tcp_rexmit_rto_prepare(struct tcp_pcb *pcb)
 {
-  struct tcp_seg *seg;
+  struct tcp_seg *seg, *unacked, *unsent;
+  struct tcp_seg **tail;
 
   LWIP_ASSERT("tcp_rexmit_rto_prepare: invalid pcb", pcb != NULL);
 
@@ -1642,7 +1643,7 @@ tcp_rexmit_rto_prepare(struct tcp_pcb *pcb)
     return ERR_VAL;
   }
 
-  /* Move all unacked segments to the head of the unsent queue.
+  /* Move all unacked segments to the unsent queue.
      However, give up if any of the unsent pbufs are still referenced by the
      netif driver due to deferred transmission. No point loading the link further
      if it is struggling to flush its buffered writes. */
@@ -1656,16 +1657,34 @@ tcp_rexmit_rto_prepare(struct tcp_pcb *pcb)
     LWIP_DEBUGF(TCP_RTO_DEBUG, ("tcp_rexmit_rto: segment busy\n"));
     return ERR_VAL;
   }
-  /* concatenate unsent queue after unacked queue */
-  seg->next = pcb->unsent;
+  /* Merge the unacked queue into the unsent queue, keeping the result
+     sorted. Both queues are sorted, but the unsent queue can hold segments
+     that precede the unacked ones: tcp_rexmit() moves the first unacked
+     segment to unsent, where it stays if the window does not let it go out
+     (e.g. a zero window). Appending unsent after unacked would put such a
+     segment behind data it precedes, and tcp_output() could then never
+     send the head of the queue within a one-segment cwnd. */
+  unacked = pcb->unacked;
+  unsent = pcb->unsent;
+  tail = &pcb->unsent;
+  while (unacked != NULL) {
+    if (unsent != NULL &&
+        TCP_SEQ_LT(lwip_ntohl(unsent->tcphdr->seqno), lwip_ntohl(unacked->tcphdr->seqno))) {
+      *tail = unsent;
+      unsent = unsent->next;
+    } else {
+      *tail = unacked;
+      unacked = unacked->next;
+    }
+    tail = &(*tail)->next;
+  }
+  *tail = unsent;
 #if TCP_OVERSIZE_DBGCHECK
   /* if last unsent changed, we need to update unsent_oversize */
-  if (pcb->unsent == NULL) {
+  if (unsent == NULL) {
     pcb->unsent_oversize = seg->oversize_left;
   }
 #endif /* TCP_OVERSIZE_DBGCHECK */
-  /* unsent queue is the concatenated queue (of unacked, unsent) */
-  pcb->unsent = pcb->unacked;
   /* unacked queue is now empty */
   pcb->unacked = NULL;
 
